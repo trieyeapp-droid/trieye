@@ -1,158 +1,181 @@
 "use client";
 
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import Navbar from "../../components/Navbar";
+import { useRouter } from "next/navigation";
 
-const categories = [
-  "overthinking",
-  "nostalgia",
-  "amore",
-  "solitudine",
-  "poesia",
-  "guarigione",
-  "notte",
-  "rabbia",
-  "speranza",
-  "confessione",
-  "da-note",
+const moods = [
+  {
+    name: "overthinking",
+    emoji: "🧠",
+  },
+  {
+    name: "nostalgia",
+    emoji: "🌙",
+  },
+  {
+    name: "amore",
+    emoji: "❤️",
+  },
+  {
+    name: "solitudine",
+    emoji: "🕯️",
+  },
+  {
+    name: "poesia",
+    emoji: "✍️",
+  },
+  {
+    name: "guarigione",
+    emoji: "🕊️",
+  },
+  {
+    name: "notte",
+    emoji: "🌌",
+  },
+  {
+    name: "rabbia",
+    emoji: "⚡",
+  },
+  {
+    name: "speranza",
+    emoji: "✨",
+  },
+  {
+    name: "confessione",
+    emoji: "🎭",
+  },
+  {
+    name: "da note",
+    emoji: "📝",
+  },
 ];
 
 export default function WritePage() {
-  const searchParams = useSearchParams();
-  const initialCategory = searchParams.get("category") || "overthinking";
+  const router = useRouter();
 
   const [content, setContent] = useState("");
-  const [mood, setMood] = useState(initialCategory);
-  const [success, setSuccess] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+
+  const [mood, setMood] = useState("overthinking");
+
+  const [loading, setLoading] = useState(false);
+
+  const [showToast, setShowToast] = useState(false);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  async function checkAuth() {
+    const { data } = await supabase.auth.getUser();
+
+    if (!data.user) {
+      router.push("/auth/login");
+    }
+  }
 
   async function publishPost() {
     if (!content.trim()) return;
 
+    setLoading(true);
+
     const { data: userData } = await supabase.auth.getUser();
 
     if (!userData.user) {
-      setErrorMessage("Devi accedere per pubblicare un pensiero.");
-      setTimeout(() => setErrorMessage(""), 3000);
+      router.push("/auth/login");
       return;
     }
 
     const { error } = await supabase.from("posts").insert({
       content,
       mood,
-      anonymous: false,
+      user_id: userData.user.id,
       heart_count: 0,
       broken_heart_count: 0,
-      user_id: userData.user.id,
     });
 
+    setLoading(false);
+
     if (error) {
-      setErrorMessage("Qualcosa è andato storto. Riprova.");
-      setTimeout(() => setErrorMessage(""), 3000);
+      alert("Errore durante la pubblicazione.");
       return;
     }
 
     setContent("");
-    setSuccess(true);
+
+    setShowToast(true);
 
     setTimeout(() => {
-      setSuccess(false);
-    }, 3000);
+      setShowToast(false);
+    }, 3500);
   }
 
   return (
-    <main className="relative min-h-screen bg-[#09090B] px-6 py-8 pb-28 text-white">
-      {success && (
-        <div className="fixed right-6 top-6 z-50 rounded-2xl border border-violet-500/30 bg-zinc-950 px-5 py-4 text-sm text-zinc-200 shadow-2xl shadow-violet-950/40">
-          <p className="font-medium">✨ Post pubblicato con successo</p>
+    <main className="relative min-h-screen overflow-hidden bg-[#09090B] px-6 py-8 pb-28 text-white">
+      <div className="absolute left-1/2 top-[-200px] h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-violet-600/20 blur-3xl" />
 
-          <p className="mt-1 text-zinc-500">
-            Il tuo pensiero ora vive su Trieye.
-          </p>
+      {showToast && (
+        <div className="fixed right-6 top-6 z-50 rounded-2xl border border-violet-500/30 bg-zinc-950 px-5 py-4 text-sm text-zinc-200 shadow-2xl shadow-violet-950/40 backdrop-blur">
+          ✨ Pensiero pubblicato con successo 🖤
         </div>
       )}
 
-      {errorMessage && (
-        <div className="fixed right-6 top-6 z-50 rounded-2xl border border-red-500/30 bg-zinc-950 px-5 py-4 text-sm text-zinc-200 shadow-2xl shadow-red-950/40">
-          <p className="font-medium">⚠️ {errorMessage}</p>
-        </div>
-      )}
-
-      <div className="mx-auto max-w-xl">
-        <p className="text-sm text-violet-400">Trieye</p>
-
-        <h1 className="font-trieye mt-2 text-6xl italic tracking-tight text-white">
-          Cosa hai in mente?
-        </h1>
-
-        <p className="mt-4 leading-relaxed text-zinc-500">
-          Scrivi un pensiero, una riflessione, una poesia o qualcosa che era rimasto nelle note.
+      <div className="relative z-10 mx-auto max-w-2xl">
+        <p className="text-sm text-violet-400">
+          Trieye
         </p>
 
-        <select
-          value={mood}
-          onChange={(e) => setMood(e.target.value)}
-          className="mt-8 w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-5 py-4 text-zinc-300 outline-none"
-        >
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
+        <h1 className="font-trieye mt-2 text-6xl italic tracking-tight">
+          Scrivi ciò che senti
+        </h1>
+
+        <p className="mt-4 max-w-lg text-zinc-500">
+          Alcuni pensieri meritano di esistere fuori dalle note del telefono.
+        </p>
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          {moods.map((item) => (
+            <button
+              key={item.name}
+              onClick={() => setMood(item.name)}
+              className={`rounded-full border px-4 py-2 text-sm transition ${
+                mood === item.name
+                  ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+                  : "border-zinc-800 bg-zinc-950 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300"
+              }`}
+            >
+              {item.emoji} {item.name}
+            </button>
           ))}
-        </select>
-
-        <div className="mt-4 flex items-center justify-between px-2">
-          <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">
-            {mood}
-          </span>
-
-          <span className="text-sm text-zinc-600">
-            {content.length} caratteri
-          </span>
         </div>
 
-        <textarea
-          className="font-trieye mt-3 h-80 w-full resize-none rounded-3xl border border-zinc-800 bg-zinc-950 p-6 text-3xl leading-relaxed outline-none placeholder:text-zinc-600"
-          placeholder="Scrivi qualcosa che non hai mai pubblicato..."
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-        />
+        <div className="mt-8 rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-6 backdrop-blur">
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Scrivi il tuo pensiero..."
+            className="h-[260px] w-full resize-none bg-transparent font-trieye text-3xl leading-relaxed text-zinc-100 outline-none placeholder:text-zinc-700"
+          />
 
-        <button
-          onClick={publishPost}
-          disabled={!content.trim()}
-          className={`mt-5 w-full rounded-2xl px-6 py-4 font-medium text-white transition ${
-            content.trim()
-              ? "bg-violet-600 hover:bg-violet-500"
-              : "cursor-not-allowed bg-zinc-800 text-zinc-500"
-          }`}
-        >
-          Pubblica pensiero
-        </button>
+          <div className="mt-6 flex items-center justify-between">
+            <span className="text-sm text-zinc-600">
+              {content.length} caratteri
+            </span>
 
-        {content.trim() && (
-          <div className="mt-10">
-            <p className="mb-4 text-sm text-zinc-500">
-              Anteprima del post
-            </p>
-
-            <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-7 shadow-2xl backdrop-blur">
-              <div className="mb-5 flex items-center justify-between">
-                <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">
-                  {mood}
-                </span>
-
-                <span className="text-xs text-zinc-600">adesso</span>
-              </div>
-
-              <p className="font-trieye text-3xl leading-relaxed text-zinc-100">
-                {content}
-              </p>
-            </div>
+            <button
+              onClick={publishPost}
+              disabled={!content.trim() || loading}
+              className={`rounded-2xl px-6 py-3 text-sm transition ${
+                content.trim()
+                  ? "bg-violet-600 text-white hover:bg-violet-500"
+                  : "cursor-not-allowed bg-zinc-800 text-zinc-500"
+              }`}
+            >
+              {loading ? "Pubblicazione..." : "Pubblica"}
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       <Navbar />

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 import Navbar from "../../../components/Navbar";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
 export default function ConversationPage() {
@@ -117,11 +118,12 @@ export default function ConversationPage() {
 
     if (otherUserId && otherUserId !== userData.user.id) {
       await supabase.from("notifications").insert({
-        user_id: otherUserId,
-        actor_id: userData.user.id,
-        type: "message",
-        message: "ti ha scritto una connessione ✦",
-      });
+  user_id: otherUserId,
+  actor_id: userData.user.id,
+  conversation_id: conversationId,
+  type: "message",
+  message: "ti ha scritto",
+});
     }
 
     setContent("");
@@ -134,6 +136,10 @@ export default function ConversationPage() {
     });
   }
 
+  const profileHref = otherUser?.username
+    ? `/u/${encodeURIComponent(otherUser.username)}`
+    : "#";
+
   return (
     <main className="min-h-screen bg-[#09090B] px-6 py-8 pb-40 text-white">
       <div className="mx-auto max-w-2xl">
@@ -144,7 +150,10 @@ export default function ConversationPage() {
           ← Torna alle connessioni
         </button>
 
-        <div className="mt-6 flex items-center gap-4 rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-5">
+        <Link
+          href={profileHref}
+          className="sticky top-4 z-40 mt-6 flex items-center gap-4 rounded-[2rem] border border-zinc-800 bg-zinc-950/95 p-5 backdrop-blur transition hover:border-violet-500/40"
+        >
           <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-violet-600/20 text-2xl">
             {otherUser?.avatar_url ? (
               <img
@@ -162,11 +171,19 @@ export default function ConversationPage() {
               @{otherUser?.username || "utente"}
             </h1>
 
-            <p className="mt-1 text-zinc-500">Continua il pensiero.</p>
+            <p className="mt-1 text-zinc-500">
+              Continua il pensiero.
+            </p>
           </div>
-        </div>
+        </Link>
 
         <div className="mt-8 space-y-5">
+          {messages.length === 0 && (
+            <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/70 p-8 text-center text-zinc-500">
+              Nessun messaggio ancora.
+            </div>
+          )}
+
           {messages.map((message) => {
             const mine = message.sender_id === userId;
 

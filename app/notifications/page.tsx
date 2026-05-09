@@ -8,7 +8,6 @@ import Link from "next/link";
 
 export default function NotificationsPage() {
   const router = useRouter();
-
   const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
@@ -37,6 +36,22 @@ export default function NotificationsPage() {
       .eq("user_id", userData.user.id);
   }
 
+  function getNotificationLink(notification: any) {
+    if (notification.type === "message" && notification.conversation_id) {
+      return `/messages/${notification.conversation_id}`;
+    }
+
+    if (notification.post_id) {
+      return `/post/${notification.post_id}`;
+    }
+
+    if (notification.profiles?.username) {
+      return `/u/${encodeURIComponent(notification.profiles.username)}`;
+    }
+
+    return "/notifications";
+  }
+
   return (
     <main className="min-h-screen bg-[#09090B] px-6 py-8 pb-28 text-white">
       <div className="mx-auto max-w-2xl">
@@ -58,9 +73,10 @@ export default function NotificationsPage() {
           )}
 
           {notifications.map((notification) => (
-            <div
+            <Link
               key={notification.id}
-              className={`rounded-[2rem] border p-5 ${
+              href={getNotificationLink(notification)}
+              className={`block rounded-[2rem] border p-5 transition hover:border-violet-500/40 ${
                 notification.read
                   ? "border-zinc-800 bg-zinc-950/70"
                   : "border-violet-500/30 bg-violet-500/10"
@@ -80,19 +96,18 @@ export default function NotificationsPage() {
                 </div>
 
                 <div>
-                  <p className="text-zinc-200">{notification.message}</p>
+                  <p className="text-zinc-200">
+                    {notification.profiles?.username
+                      ? `@${notification.profiles.username} ${notification.message}`
+                      : notification.message}
+                  </p>
 
-                  {notification.profiles?.username && (
-                    <Link
-                      href={`/u/${notification.profiles.username}`}
-                      className="mt-1 block text-sm text-violet-400"
-                    >
-                      @{notification.profiles.username}
-                    </Link>
-                  )}
+                  <p className="mt-1 text-sm text-zinc-600">
+                    Apri
+                  </p>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

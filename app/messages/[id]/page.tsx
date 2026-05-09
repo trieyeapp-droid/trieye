@@ -12,6 +12,7 @@ export default function ConversationPage() {
   const conversationId = params.id as string;
 
   const [userId, setUserId] = useState("");
+  const [otherUserId, setOtherUserId] = useState("");
   const [otherUser, setOtherUser] = useState<any>(null);
 
   const [messages, setMessages] = useState<any[]>([]);
@@ -44,18 +45,11 @@ export default function ConversationPage() {
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  function scrollToBottom() {
-    bottomRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }
-
   async function loadConversation() {
-    const { data: userData } =
-      await supabase.auth.getUser();
+    const { data: userData } = await supabase.auth.getUser();
 
     if (!userData.user) {
       router.push("/auth/login");
@@ -79,20 +73,24 @@ export default function ConversationPage() {
       return;
     }
 
+    const otherId =
+      conversation.user_one === userData.user.id
+        ? conversation.user_two
+        : conversation.user_one;
+
     const other =
       conversation.user_one === userData.user.id
         ? conversation.user_two_profile
         : conversation.user_one_profile;
 
+    setOtherUserId(otherId);
     setOtherUser(other);
 
     const { data: messagesData } = await supabase
       .from("messages")
       .select("*")
       .eq("conversation_id", conversationId)
-      .order("created_at", {
-        ascending: true,
-      });
+      .order("created_at", { ascending: true });
 
     setMessages(messagesData || []);
   }
@@ -102,36 +100,38 @@ export default function ConversationPage() {
 
     const text = content;
 
-    const { data: userData } =
-      await supabase.auth.getUser();
+    const { data: userData } = await supabase.auth.getUser();
 
     if (!userData.user) return;
 
-    const { error } = await supabase
-      .from("messages")
-      .insert({
-        conversation_id: conversationId,
-        sender_id: userData.user.id,
-        content: text,
-      });
+    const { error } = await supabase.from("messages").insert({
+      conversation_id: conversationId,
+      sender_id: userData.user.id,
+      content: text,
+    });
 
     if (error) {
-      console.log(error);
       alert("Errore nell'invio del messaggio");
       return;
+    }
+
+    if (otherUserId && otherUserId !== userData.user.id) {
+      await supabase.from("notifications").insert({
+        user_id: otherUserId,
+        actor_id: userData.user.id,
+        type: "message",
+        message: "ti ha scritto una connessione ✦",
+      });
     }
 
     setContent("");
   }
 
   function formatDate(date: string) {
-    return new Date(date).toLocaleTimeString(
-      "it-IT",
-      {
-        hour: "2-digit",
-        minute: "2-digit",
-      }
-    );
+    return new Date(date).toLocaleTimeString("it-IT", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
   return (
@@ -162,31 +162,18 @@ export default function ConversationPage() {
               @{otherUser?.username || "utente"}
             </h1>
 
-            <p className="mt-1 text-zinc-500">
-              Continua il pensiero.
-            </p>
+            <p className="mt-1 text-zinc-500">Continua il pensiero.</p>
           </div>
         </div>
 
         <div className="mt-8 space-y-5">
-          {messages.length === 0 && (
-            <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/70 p-8 text-center text-zinc-500">
-              Nessun messaggio ancora.
-            </div>
-          )}
-
           {messages.map((message) => {
-            const mine =
-              message.sender_id === userId;
+            const mine = message.sender_id === userId;
 
             return (
               <div
                 key={message.id}
-                className={`flex ${
-                  mine
-                    ? "justify-end"
-                    : "justify-start"
-                }`}
+                className={`flex ${mine ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-[80%] rounded-[2rem] px-6 py-5 ${
@@ -215,9 +202,7 @@ export default function ConversationPage() {
         <div className="mx-auto flex max-w-2xl gap-3 rounded-[2rem] border border-zinc-800 bg-zinc-950/90 p-4 backdrop-blur">
           <textarea
             value={content}
-            onChange={(e) =>
-              setContent(e.target.value)
-            }
+            onChange={(e) => setContent(e.target.value)}
             placeholder="Scrivi..."
             className="max-h-40 min-h-[60px] flex-1 resize-none bg-transparent px-2 py-3 text-zinc-100 outline-none placeholder:text-zinc-600"
           />

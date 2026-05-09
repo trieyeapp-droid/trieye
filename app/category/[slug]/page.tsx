@@ -120,10 +120,10 @@ function getProfileLink(post: any) {
     post.display_mode === "public" &&
     post.profiles?.username
   ) {
-    return `/u/${post.profiles.username}`;
+    return `/u/${encodeURIComponent(post.profiles.username)}`;
   }
 
-  return "#";
+  return undefined;
 }
 
 export default async function CategoryPage({
@@ -219,7 +219,7 @@ export default async function CategoryPage({
                 <div className="mb-6 flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <Link
-                      href={profileLink}
+                      href={profileLink || "/home"}
                       className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-violet-600/20 text-lg ring-1 ring-violet-500/20 ${
                         isPublic
                           ? "transition hover:scale-105"
@@ -250,7 +250,7 @@ export default async function CategoryPage({
                       {isPublic &&
                       post.profiles?.username ? (
                         <Link
-                          href={profileLink}
+                          href={profileLink || "/home"}
                           className="text-sm text-zinc-300 transition hover:text-violet-300"
                         >
                           {displayName}

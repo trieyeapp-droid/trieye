@@ -3,24 +3,21 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 import Navbar from "../../../components/Navbar";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
 export default function PublicUserPage() {
   const params = useParams();
   const router = useRouter();
-
-  const username = params.username as string;
+  const username = decodeURIComponent(
+  params.username as string
+);
 
   const [currentUserId, setCurrentUserId] = useState("");
-
   const [profile, setProfile] = useState<any>(null);
-
   const [posts, setPosts] = useState<any[]>([]);
-
   const [isFollowing, setIsFollowing] = useState(false);
-
   const [followersCount, setFollowersCount] = useState(0);
-
   const [followingCount, setFollowingCount] = useState(0);
 
   useEffect(() => {
@@ -41,7 +38,7 @@ export default function PublicUserPage() {
       .single();
 
     if (!profileData) {
-      router.push("/feed");
+      router.push("/home");
       return;
     }
 
@@ -66,7 +63,6 @@ export default function PublicUserPage() {
       .eq("follower_id", profileData.id);
 
     setFollowersCount(followers || 0);
-
     setFollowingCount(following || 0);
 
     if (userData.user) {
@@ -88,7 +84,6 @@ export default function PublicUserPage() {
     }
 
     if (!profile) return;
-
     if (currentUserId === profile.id) return;
 
     if (isFollowing) {
@@ -99,7 +94,6 @@ export default function PublicUserPage() {
         .eq("following_id", profile.id);
 
       setIsFollowing(false);
-
       setFollowersCount((prev) => prev - 1);
     } else {
       await supabase.from("follows").insert({
@@ -115,9 +109,47 @@ export default function PublicUserPage() {
       });
 
       setIsFollowing(true);
-
       setFollowersCount((prev) => prev + 1);
     }
+  }
+
+  async function startConversation() {
+    if (!currentUserId) {
+      router.push("/auth/login");
+      return;
+    }
+
+    if (!profile) return;
+    if (currentUserId === profile.id) return;
+
+    const { data: existingConversation } = await supabase
+      .from("conversations")
+      .select("*")
+      .or(
+        `and(user_one.eq.${currentUserId},user_two.eq.${profile.id}),and(user_one.eq.${profile.id},user_two.eq.${currentUserId})`
+      )
+      .maybeSingle();
+
+    if (existingConversation) {
+      router.push(`/messages/${existingConversation.id}`);
+      return;
+    }
+
+    const { data: newConversation, error } = await supabase
+      .from("conversations")
+      .insert({
+        user_one: currentUserId,
+        user_two: profile.id,
+      })
+      .select()
+      .single();
+
+    if (error || !newConversation) {
+      alert("Errore nella creazione della connessione.");
+      return;
+    }
+
+    router.push(`/messages/${newConversation.id}`);
   }
 
   if (!profile) {
@@ -158,47 +190,41 @@ export default function PublicUserPage() {
 
           <div className="mt-8 grid grid-cols-3 gap-3 text-center text-sm">
             <div className="rounded-2xl border border-zinc-800 px-4 py-3">
-              <p className="text-xl text-white">
-                {posts.length}
-              </p>
-
-              <p className="text-zinc-500">
-                pensieri
-              </p>
+              <p className="text-xl text-white">{posts.length}</p>
+              <p className="text-zinc-500">pensieri</p>
             </div>
 
             <div className="rounded-2xl border border-zinc-800 px-4 py-3">
-              <p className="text-xl text-white">
-                {followersCount}
-              </p>
-
-              <p className="text-zinc-500">
-                seguaci
-              </p>
+              <p className="text-xl text-white">{followersCount}</p>
+              <p className="text-zinc-500">seguaci</p>
             </div>
 
             <div className="rounded-2xl border border-zinc-800 px-4 py-3">
-              <p className="text-xl text-white">
-                {followingCount}
-              </p>
-
-              <p className="text-zinc-500">
-                seguiti
-              </p>
+              <p className="text-xl text-white">{followingCount}</p>
+              <p className="text-zinc-500">seguiti</p>
             </div>
           </div>
 
           {currentUserId !== profile.id && (
-            <button
-              onClick={toggleFollow}
-              className={`mt-6 w-full rounded-2xl px-6 py-4 transition ${
-                isFollowing
-                  ? "border border-zinc-700 text-zinc-300 hover:text-white"
-                  : "bg-violet-600 text-white hover:bg-violet-500"
-              }`}
-            >
-              {isFollowing ? "Segui già" : "Segui"}
-            </button>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button
+                onClick={toggleFollow}
+                className={`rounded-2xl px-6 py-4 transition ${
+                  isFollowing
+                    ? "border border-zinc-700 text-zinc-300 hover:text-white"
+                    : "bg-violet-600 text-white hover:bg-violet-500"
+                }`}
+              >
+                {isFollowing ? "Segui già" : "Segui"}
+              </button>
+
+              <button
+                onClick={startConversation}
+                className="rounded-2xl border border-zinc-700 px-6 py-4 text-zinc-300 transition hover:border-violet-500/40 hover:text-white"
+              >
+                Scrivi
+              </button>
+            </div>
           )}
         </div>
 
@@ -210,13 +236,39 @@ export default function PublicUserPage() {
           {posts.map((post) => (
             <article
               key={post.id}
-              className="rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-7"
+              className="relative rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-7"
             >
-              <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">
-                {post.mood}
-              </span>
+              <div className="mb-6 flex items-center gap-3">
+                <Link
+                  href={`/u/${profile.username}`}
+                  className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-violet-600/20 text-lg ring-1 ring-violet-500/20 transition hover:scale-105"
+                >
+                  {profile.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt="Avatar"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span>👁️</span>
+                  )}
+                </Link>
 
-              <p className="font-trieye mt-5 text-3xl leading-relaxed">
+                <div>
+                  <Link
+                    href={`/u/${profile.username}`}
+                    className="text-sm text-zinc-300 transition hover:text-violet-300"
+                  >
+                    @{profile.username}
+                  </Link>
+
+                  <p className="text-xs text-zinc-600">
+                    {post.mood}
+                  </p>
+                </div>
+              </div>
+
+              <p className="font-trieye text-3xl leading-relaxed">
                 {post.content}
               </p>
             </article>

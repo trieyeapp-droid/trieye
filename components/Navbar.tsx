@@ -12,13 +12,17 @@ export default function Navbar() {
   }, []);
 
   async function loadUnreadCount() {
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData } =
+      await supabase.auth.getUser();
 
     if (!userData.user) return;
 
     const { count } = await supabase
       .from("notifications")
-      .select("*", { count: "exact", head: true })
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
       .eq("user_id", userData.user.id)
       .eq("read", false);
 
@@ -26,7 +30,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed bottom-4 left-1/2 z-50 w-[94%] max-w-md -translate-x-1/2 rounded-2xl border border-zinc-800 bg-zinc-950/90 px-4 py-3 text-white backdrop-blur">
+    <nav className="fixed bottom-4 left-1/2 z-50 w-[94%] max-w-2xl -translate-x-1/2 rounded-2xl border border-zinc-800 bg-zinc-950/90 px-4 py-3 text-white backdrop-blur">
       <div className="flex items-center justify-between text-sm">
         <Link
           href="/home"
@@ -40,6 +44,13 @@ export default function Navbar() {
           className="rounded-xl bg-violet-600 px-4 py-2 text-white transition hover:bg-violet-500"
         >
           Scrivi
+        </Link>
+
+        <Link
+          href="/messages"
+          className="text-zinc-400 transition hover:text-white"
+        >
+          Connessioni
         </Link>
 
         <Link

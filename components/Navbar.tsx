@@ -26,28 +26,28 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed bottom-4 left-1/2 z-50 w-[94%] max-w-lg -translate-x-1/2 rounded-2xl border border-zinc-800 bg-zinc-950/90 px-4 py-3 text-white backdrop-blur">
+    <nav className="fixed bottom-4 left-1/2 z-50 w-[94%] max-w-md -translate-x-1/2 rounded-2xl border border-zinc-800 bg-zinc-950/90 px-4 py-3 text-white backdrop-blur">
       <div className="flex items-center justify-between text-sm">
-        <Link href="/" className="text-zinc-400 hover:text-white">
+        <Link
+          href="/home"
+          className="text-zinc-400 transition hover:text-white"
+        >
           Home
-        </Link>
-
-        <Link href="/feed" className="text-zinc-400 hover:text-white">
-          Feed
         </Link>
 
         <Link
           href="/write"
-          className="rounded-xl bg-violet-600 px-4 py-2 text-white"
+          className="rounded-xl bg-violet-600 px-4 py-2 text-white transition hover:bg-violet-500"
         >
           Scrivi
         </Link>
 
         <Link
           href="/notifications"
-          className="relative text-zinc-400 hover:text-white"
+          className="relative text-zinc-400 transition hover:text-white"
         >
           🔔
+
           {unreadCount > 0 && (
             <span className="absolute -right-3 -top-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs text-white">
               {unreadCount}
@@ -55,7 +55,10 @@ export default function Navbar() {
           )}
         </Link>
 
-        <Link href="/profile" className="text-zinc-400 hover:text-white">
+        <Link
+          href="/profile"
+          className="text-zinc-400 transition hover:text-white"
+        >
           Profilo
         </Link>
       </div>

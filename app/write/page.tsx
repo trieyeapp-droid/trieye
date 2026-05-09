@@ -6,61 +6,28 @@ import Navbar from "../../components/Navbar";
 import { useRouter } from "next/navigation";
 
 const moods = [
-  {
-    name: "overthinking",
-    emoji: "🧠",
-  },
-  {
-    name: "nostalgia",
-    emoji: "🌙",
-  },
-  {
-    name: "amore",
-    emoji: "❤️",
-  },
-  {
-    name: "solitudine",
-    emoji: "🕯️",
-  },
-  {
-    name: "poesia",
-    emoji: "✍️",
-  },
-  {
-    name: "guarigione",
-    emoji: "🕊️",
-  },
-  {
-    name: "notte",
-    emoji: "🌌",
-  },
-  {
-    name: "rabbia",
-    emoji: "⚡",
-  },
-  {
-    name: "speranza",
-    emoji: "✨",
-  },
-  {
-    name: "confessione",
-    emoji: "🎭",
-  },
-  {
-    name: "da note",
-    emoji: "📝",
-  },
+  { name: "overthinking", emoji: "🧠" },
+  { name: "nostalgia", emoji: "🌙" },
+  { name: "amore", emoji: "❤️" },
+  { name: "solitudine", emoji: "🌫️" },
+  { name: "poesia", emoji: "✍️" },
+  { name: "guarigione", emoji: "🕊️" },
+  { name: "notte", emoji: "🌌" },
+  { name: "rabbia", emoji: "⚡" },
+  { name: "speranza", emoji: "✨" },
+  { name: "confessione", emoji: "🤐" },
+  { name: "da-note", emoji: "📝" },
+  { name: "obiettivi", emoji: "🎯" },
 ];
 
 export default function WritePage() {
   const router = useRouter();
 
   const [content, setContent] = useState("");
-
   const [mood, setMood] = useState("overthinking");
-
+  const [displayMode, setDisplayMode] = useState("public");
+  const [aliasName, setAliasName] = useState("");
   const [loading, setLoading] = useState(false);
-
   const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
@@ -93,6 +60,9 @@ export default function WritePage() {
       user_id: userData.user.id,
       heart_count: 0,
       broken_heart_count: 0,
+      display_mode: displayMode,
+      alias_name: displayMode === "alias" ? aliasName || "voce anonima" : null,
+      anonymous: displayMode === "anonymous",
     });
 
     setLoading(false);
@@ -103,7 +73,7 @@ export default function WritePage() {
     }
 
     setContent("");
-
+    setAliasName("");
     setShowToast(true);
 
     setTimeout(() => {
@@ -122,9 +92,7 @@ export default function WritePage() {
       )}
 
       <div className="relative z-10 mx-auto max-w-2xl">
-        <p className="text-sm text-violet-400">
-          Trieye
-        </p>
+        <p className="text-sm text-violet-400">Trieye</p>
 
         <h1 className="font-trieye mt-2 text-6xl italic tracking-tight">
           Scrivi ciò che senti
@@ -148,6 +116,54 @@ export default function WritePage() {
               {item.emoji} {item.name}
             </button>
           ))}
+        </div>
+
+        <div className="mt-6 rounded-[2rem] border border-zinc-800 bg-zinc-950/70 p-4">
+          <p className="mb-3 text-sm text-zinc-500">Come vuoi pubblicare?</p>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <button
+              onClick={() => setDisplayMode("public")}
+              className={`rounded-2xl border px-4 py-3 text-sm ${
+                displayMode === "public"
+                  ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+                  : "border-zinc-800 text-zinc-500"
+              }`}
+            >
+              Pubblico
+            </button>
+
+            <button
+              onClick={() => setDisplayMode("alias")}
+              className={`rounded-2xl border px-4 py-3 text-sm ${
+                displayMode === "alias"
+                  ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+                  : "border-zinc-800 text-zinc-500"
+              }`}
+            >
+              Alias
+            </button>
+
+            <button
+              onClick={() => setDisplayMode("anonymous")}
+              className={`rounded-2xl border px-4 py-3 text-sm ${
+                displayMode === "anonymous"
+                  ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+                  : "border-zinc-800 text-zinc-500"
+              }`}
+            >
+              Anonimo
+            </button>
+          </div>
+
+          {displayMode === "alias" && (
+            <input
+              value={aliasName}
+              onChange={(e) => setAliasName(e.target.value)}
+              placeholder="Scegli un alias, es. luna.stanca"
+              className="mt-4 w-full rounded-2xl border border-zinc-800 bg-black/50 px-4 py-3 text-sm outline-none placeholder:text-zinc-600"
+            />
+          )}
         </div>
 
         <div className="mt-8 rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-6 backdrop-blur">

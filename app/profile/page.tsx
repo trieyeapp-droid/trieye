@@ -11,6 +11,7 @@ export default function ProfilePage() {
   const [userId, setUserId] = useState("");
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
+  const [savedPosts, setSavedPosts] = useState<any[]>([]);
 
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
@@ -55,6 +56,14 @@ export default function ProfilePage() {
 
     setPosts(postsData || []);
 
+    const { data: savedData } = await supabase
+      .from("saved_posts")
+      .select("id, visibility, posts(*)")
+      .eq("user_id", userData.user.id)
+      .order("created_at", { ascending: false });
+
+    setSavedPosts(savedData || []);
+
     const { count: followers } = await supabase
       .from("follows")
       .select("*", { count: "exact", head: true })
@@ -67,6 +76,28 @@ export default function ProfilePage() {
 
     setFollowersCount(followers || 0);
     setFollowingCount(following || 0);
+  }
+
+  async function changeSavedVisibility(
+    savedId: string,
+    visibility: "private" | "public"
+  ) {
+    await supabase
+      .from("saved_posts")
+      .update({ visibility })
+      .eq("id", savedId);
+
+    setSavedPosts((prev) =>
+      prev.map((item) =>
+        item.id === savedId ? { ...item, visibility } : item
+      )
+    );
+  }
+
+  async function removeSavedPost(savedId: string) {
+    await supabase.from("saved_posts").delete().eq("id", savedId);
+
+    setSavedPosts((prev) => prev.filter((item) => item.id !== savedId));
   }
 
   async function uploadAvatar(file: File) {
@@ -85,7 +116,6 @@ export default function ProfilePage() {
     }
 
     const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
-
     setAvatarUrl(data.publicUrl);
   }
 
@@ -107,10 +137,7 @@ export default function ProfilePage() {
     }
 
     setMessage("✨ Profilo aggiornato con successo");
-
-    setTimeout(() => {
-      setMessage("");
-    }, 3000);
+    setTimeout(() => setMessage(""), 3000);
 
     loadProfile();
   }
@@ -134,10 +161,7 @@ export default function ProfilePage() {
     setPostToDelete(null);
 
     setMessage("🗑️ Post cancellato con successo");
-
-    setTimeout(() => {
-      setMessage("");
-    }, 3000);
+    setTimeout(() => setMessage(""), 3000);
   }
 
   async function logout() {
@@ -161,20 +185,20 @@ export default function ProfilePage() {
             </h2>
 
             <p className="mt-4 text-zinc-500">
-              Questa azione non può essere annullata. Il pensiero verrà rimosso da Trieye.
+              Questa azione non può essere annullata.
             </p>
 
             <div className="mt-7 flex gap-3">
               <button
                 onClick={() => setPostToDelete(null)}
-                className="flex-1 rounded-2xl border border-zinc-700 px-5 py-3 text-zinc-300 transition hover:text-white"
+                className="flex-1 rounded-2xl border border-zinc-700 px-5 py-3 text-zinc-300"
               >
                 Annulla
               </button>
 
               <button
                 onClick={deletePost}
-                className="flex-1 rounded-2xl bg-red-600 px-5 py-3 text-white transition hover:bg-red-500"
+                className="flex-1 rounded-2xl bg-red-600 px-5 py-3 text-white"
               >
                 Cancella
               </button>
@@ -241,7 +265,7 @@ export default function ProfilePage() {
               className="h-28 resize-none rounded-2xl border border-zinc-800 bg-black/60 px-5 py-4 outline-none"
             />
 
-            <label className="cursor-pointer rounded-2xl border border-dashed border-zinc-700 bg-black/40 px-5 py-4 text-sm text-zinc-400 hover:border-violet-500/40">
+            <label className="cursor-pointer rounded-2xl border border-dashed border-zinc-700 bg-black/40 px-5 py-4 text-sm text-zinc-400">
               Carica immagine profilo
               <input
                 type="file"
@@ -256,23 +280,21 @@ export default function ProfilePage() {
 
             <button
               onClick={saveProfile}
-              className="rounded-2xl bg-violet-600 px-6 py-4 text-white transition hover:bg-violet-500"
+              className="rounded-2xl bg-violet-600 px-6 py-4 text-white"
             >
               Salva profilo
             </button>
 
             <button
               onClick={logout}
-              className="rounded-2xl border border-zinc-800 px-4 py-3 text-zinc-400 transition hover:text-white"
+              className="rounded-2xl border border-zinc-800 px-4 py-3 text-zinc-400"
             >
               Esci
             </button>
           </div>
         </div>
 
-        <h2 className="font-trieye mt-10 text-4xl italic">
-          I tuoi pensieri
-        </h2>
+        <h2 className="font-trieye mt-10 text-4xl italic">I tuoi pensieri</h2>
 
         <div className="mt-6 space-y-5">
           {posts.map((post) => (
@@ -287,7 +309,7 @@ export default function ProfilePage() {
 
                 <button
                   onClick={() => setPostToDelete(post.id)}
-                  className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs text-red-400 transition hover:bg-red-500/20"
+                  className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs text-red-400"
                 >
                   Elimina
                 </button>
@@ -298,6 +320,64 @@ export default function ProfilePage() {
               </p>
             </article>
           ))}
+        </div>
+
+        <h2 className="font-trieye mt-12 text-4xl italic">
+          Pensieri salvati
+        </h2>
+
+        <div className="mt-6 space-y-5">
+          {savedPosts.length === 0 && (
+            <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-7 text-zinc-500">
+              Non hai ancora salvato nessun pensiero.
+            </div>
+          )}
+
+          {savedPosts.map((saved) => {
+            const post = saved.posts;
+
+            if (!post) return null;
+
+            return (
+              <article
+                key={saved.id}
+                className="rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-7"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">
+                    {post.mood}
+                  </span>
+
+                  <div className="flex gap-2">
+                    <select
+                      value={saved.visibility}
+                      onChange={(e) =>
+                        changeSavedVisibility(
+                          saved.id,
+                          e.target.value as "private" | "public"
+                        )
+                      }
+                      className="rounded-full border border-zinc-800 bg-black px-3 py-1 text-xs text-zinc-400 outline-none"
+                    >
+                      <option value="private">Privato</option>
+                      <option value="public">Pubblico</option>
+                    </select>
+
+                    <button
+                      onClick={() => removeSavedPost(saved.id)}
+                      className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs text-red-400"
+                    >
+                      Rimuovi
+                    </button>
+                  </div>
+                </div>
+
+                <p className="font-trieye mt-5 text-3xl leading-relaxed">
+                  {post.content}
+                </p>
+              </article>
+            );
+          })}
         </div>
       </div>
 

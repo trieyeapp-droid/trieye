@@ -14,12 +14,11 @@ export default function PostReactionButtons({
   initialHearts,
   initialBrokenHearts,
 }: Props) {
-  const [hearts, setHearts] = useState(initialHearts || 0);
-  const [brokenHearts, setBrokenHearts] = useState(initialBrokenHearts || 0);
-  const [liked, setLiked] = useState(false);
-  const [broken, setBroken] = useState(false);
-  const [heartAnim, setHeartAnim] = useState(false);
-  const [breakAnim, setBreakAnim] = useState(false);
+  const [relateCount, setRelateCount] = useState(initialHearts || 0);
+  const [disagreeCount, setDisagreeCount] = useState(initialBrokenHearts || 0);
+
+  const [related, setRelated] = useState(false);
+  const [disagreed, setDisagreed] = useState(false);
 
   async function createReactionNotification(type: "heart" | "broken_heart") {
     const { data: userData } = await supabase.auth.getUser();
@@ -33,7 +32,6 @@ export default function PostReactionButtons({
       .single();
 
     if (!postData?.user_id) return;
-
     if (postData.user_id === userData.user.id) return;
 
     await supabase.from("notifications").insert({
@@ -43,81 +41,67 @@ export default function PostReactionButtons({
       type,
       message:
         type === "heart"
-          ? "ha messo ❤️ a un tuo pensiero"
-          : "ha messo 💔 a un tuo pensiero",
+          ? "si è rivisto in un tuo pensiero"
+          : "non la pensa come te su un tuo pensiero",
     });
   }
 
-  async function toggleHeart() {
-    const newLiked = !liked;
-    const newCount = newLiked ? hearts + 1 : hearts - 1;
+  async function toggleRelate() {
+    const newValue = !related;
+    const newCount = newValue ? relateCount + 1 : relateCount - 1;
 
-    setLiked(newLiked);
-    setHearts(newCount);
-    setHeartAnim(true);
-
-    setTimeout(() => setHeartAnim(false), 600);
+    setRelated(newValue);
+    setRelateCount(newCount);
 
     await supabase
       .from("posts")
       .update({ heart_count: newCount })
       .eq("id", postId);
 
-    if (newLiked) {
+    if (newValue) {
       createReactionNotification("heart");
     }
   }
 
-  async function toggleBrokenHeart() {
-    const newBroken = !broken;
-    const newCount = newBroken ? brokenHearts + 1 : brokenHearts - 1;
+  async function toggleDisagree() {
+    const newValue = !disagreed;
+    const newCount = newValue ? disagreeCount + 1 : disagreeCount - 1;
 
-    setBroken(newBroken);
-    setBrokenHearts(newCount);
-    setBreakAnim(true);
-
-    setTimeout(() => setBreakAnim(false), 600);
+    setDisagreed(newValue);
+    setDisagreeCount(newCount);
 
     await supabase
       .from("posts")
       .update({ broken_heart_count: newCount })
       .eq("id", postId);
 
-    if (newBroken) {
+    if (newValue) {
       createReactionNotification("broken_heart");
     }
   }
 
   return (
-    <div className="mt-5 flex items-center gap-3">
+    <div className="mt-5 flex flex-wrap items-center gap-3">
       <button
-        onClick={toggleHeart}
-        className={`relative flex items-center gap-2 rounded-full border px-4 py-2 transition ${
-          liked
-            ? "border-red-500/40 bg-red-500/10 text-red-400"
-            : "border-zinc-800 bg-zinc-950 text-zinc-500 hover:text-red-400"
+        onClick={toggleRelate}
+        className={`rounded-full border px-4 py-2 text-sm transition ${
+          related
+            ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+            : "border-zinc-800 bg-zinc-950 text-zinc-500 hover:border-violet-500/30 hover:text-zinc-300"
         }`}
       >
-        <span className={`text-2xl ${heartAnim ? "animate-bounce" : ""}`}>
-          ❤️
-        </span>
-
-        <span className="text-sm">{hearts}</span>
+        Mi ci rivedo · {relateCount}
       </button>
 
       <button
-        onClick={toggleBrokenHeart}
-        className={`relative flex items-center gap-2 rounded-full border px-4 py-2 transition ${
-          broken
-            ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
-            : "border-zinc-800 bg-zinc-950 text-zinc-500 hover:text-violet-300"
+        onClick={toggleDisagree}
+        className={`rounded-full border px-4 py-2 text-sm transition ${
+          disagreed
+            ? "border-zinc-500/40 bg-zinc-800/60 text-zinc-200"
+            : "border-zinc-800 bg-zinc-950 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300"
         }`}
       >
-        <span className={`text-2xl ${breakAnim ? "animate-bounce" : ""}`}>
-          💔
-        </span>
-
-        <span className="text-sm">{brokenHearts}</span>
+        Non la penso così · {disagreeCount}
       </button>
     </div>
   );

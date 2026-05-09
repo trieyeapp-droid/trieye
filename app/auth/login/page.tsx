@@ -22,7 +22,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/feed");
+    router.push("/home");
   }
 
   return (

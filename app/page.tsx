@@ -1,27 +1,57 @@
-import Navbar from "../components/Navbar";
+"use client";
+
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "../lib/supabase";
 
-export default function HomePage() {
+export default function LandingPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  async function checkUser() {
+    const { data } = await supabase.auth.getUser();
+
+    if (data.user) {
+      router.push("/home");
+    }
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#09090B] text-white">
-      <div className="absolute left-1/2 top-[-200px] h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-violet-600/20 blur-3xl" />
+      <div className="absolute left-1/2 top-[-240px] h-[560px] w-[560px] -translate-x-1/2 rounded-full bg-violet-600/20 blur-3xl" />
+      <div className="absolute bottom-[-220px] right-[-120px] h-[480px] w-[480px] rounded-full bg-indigo-600/10 blur-3xl" />
 
-      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 pb-28">
+      <section className="relative z-10 mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-6 text-center">
         <Image
           src="/logo.jpeg"
           alt="Trieye Logo"
-          width={90}
-          height={90}
+          width={92}
+          height={92}
           className="mb-6 rounded-2xl opacity-90"
         />
+
+        <p className="mb-4 text-sm text-violet-400">
+          Per i pensieri che restano nelle note
+        </p>
 
         <h1 className="font-trieye text-8xl italic tracking-tight text-white">
           Trieye
         </h1>
 
-        <p className="mt-6 max-w-xl text-center text-xl leading-relaxed text-zinc-400">
-          Un posto per pensieri, riflessioni e parole che normalmente rimangono nelle note.
+        <div className="mt-8 rounded-[2rem] border border-zinc-800/80 bg-zinc-950/70 p-7 shadow-2xl backdrop-blur">
+          <p className="font-trieye text-3xl leading-relaxed text-zinc-100">
+            “Alcuni pensieri non cercano attenzione. Cercano solo un posto dove esistere.”
+          </p>
+        </div>
+
+        <p className="mt-8 max-w-xl text-lg leading-relaxed text-zinc-500">
+          Leggi pensieri reali, ritrovati nelle parole degli altri e condividi
+          ciò che normalmente rimarrebbe nascosto.
         </p>
 
         <div className="mt-10 flex flex-wrap justify-center gap-4">
@@ -47,12 +77,10 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <p className="mt-16 text-sm text-zinc-600">
-          Some thoughts deserve more than silence.
+        <p className="mt-16 text-sm text-zinc-700">
+          Apri. Leggi. Ti riconosci. Scrivi.
         </p>
-      </div>
-
-      <Navbar />
+      </section>
     </main>
   );
 }

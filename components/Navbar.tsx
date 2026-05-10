@@ -1,77 +1,65 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
-  const [unreadCount, setUnreadCount] = useState(0);
+  const pathname = usePathname();
 
-  useEffect(() => {
-    loadUnreadCount();
-  }, []);
+  const links = [
+    {
+      href: "/home",
+      label: "Home",
+      icon: "⌂",
+    },
 
-  async function loadUnreadCount() {
-    const { data: userData } =
-      await supabase.auth.getUser();
+    {
+      href: "/write",
+      label: "Scrivi",
+      icon: "✦",
+    },
 
-    if (!userData.user) return;
+    {
+      href: "/notifications",
+      label: "Notifiche",
+      icon: "◉",
+    },
 
-    const { count } = await supabase
-      .from("notifications")
-      .select("*", {
-        count: "exact",
-        head: true,
-      })
-      .eq("user_id", userData.user.id)
-      .eq("read", false);
-
-    setUnreadCount(count || 0);
-  }
+    {
+      href: "/profile",
+      label: "Profilo",
+      icon: "☻",
+    },
+  ];
 
   return (
-    <nav className="fixed bottom-4 left-1/2 z-50 w-[94%] max-w-2xl -translate-x-1/2 rounded-2xl border border-zinc-800 bg-zinc-950/90 px-4 py-3 text-white backdrop-blur">
-      <div className="flex items-center justify-between text-sm">
-        <Link
-          href="/home"
-          className="text-zinc-400 transition hover:text-white"
-        >
-          Home
-        </Link>
+    <nav className="fixed bottom-5 left-1/2 z-50 w-[92%] max-w-xl -translate-x-1/2 rounded-[2rem] border border-zinc-800/80 bg-zinc-950/90 px-3 py-3 shadow-2xl backdrop-blur-xl">
+      <div className="flex items-center justify-between gap-2">
+        {links.map((link) => {
+          const active =
+            pathname === link.href ||
+            pathname.startsWith(`${link.href}/`);
 
-        <Link
-          href="/write"
-          className="rounded-xl bg-violet-600 px-4 py-2 text-white transition hover:bg-violet-500"
-        >
-          Scrivi
-        </Link>
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`flex flex-1 flex-col items-center justify-center rounded-2xl px-4 py-3 transition ${
+                active
+                  ? "bg-violet-600/15 text-violet-300"
+                  : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+              }`}
+            >
+              <span className="text-lg">
+                {link.icon}
+              </span>
 
-        <Link
-          href="/messages"
-          className="text-zinc-400 transition hover:text-white"
-        >
-          Connessioni
-        </Link>
-
-        <Link
-          href="/notifications"
-          className="relative text-zinc-400 transition hover:text-white"
-        >
-          🔔
-
-          {unreadCount > 0 && (
-            <span className="absolute -right-3 -top-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs text-white">
-              {unreadCount}
-            </span>
-          )}
-        </Link>
-
-        <Link
-          href="/profile"
-          className="text-zinc-400 transition hover:text-white"
-        >
-          Profilo
-        </Link>
+              <span className="mt-1 text-[11px]">
+                {link.label}
+              </span>
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

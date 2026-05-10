@@ -1,7 +1,4 @@
-export const dynamic = "force-dynamic";
-
-import Link from "next/link";
-import { supabase } from "../../lib/supabase";
+export const revalidate = 0;
 import Link from "next/link";
 import { supabase } from "../../lib/supabase";
 import Navbar from "../../components/Navbar";

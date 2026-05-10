@@ -32,39 +32,95 @@ function formatDate(date: string) {
 }
 
 function getDisplayName(post: any) {
-  if (post.display_mode === "anonymous") {
-    return "— anonimo";
-  }
-
+  if (post.display_mode === "anonymous") return "— anonimo";
   if (post.display_mode === "alias") {
     return `— ${post.alias_name || "voce anonima"}`;
   }
 
-  return post.profiles?.username
-    ? `@${post.profiles.username}`
-    : "@anonimo";
+  return post.profiles?.username ? `@${post.profiles.username}` : "@anonimo";
 }
 
 function getProfileLink(post: any) {
-  if (
-    post.display_mode === "public" &&
-    post.profiles?.username
-  ) {
+  if (post.display_mode === "public" && post.profiles?.username) {
     return `/u/${encodeURIComponent(post.profiles.username)}`;
   }
 
   return undefined;
 }
 
+function sortPostsByPreferredMoods(posts: any[], preferredMoods: string[]) {
+  return [...posts].sort((a, b) => {
+    const aScore = preferredMoods.includes(a.mood) ? 1 : 0;
+    const bScore = preferredMoods.includes(b.mood) ? 1 : 0;
+
+    if (aScore !== bScore) return bScore - aScore;
+
+    return (
+      new Date(b.created_at).getTime() -
+      new Date(a.created_at).getTime()
+    );
+  });
+}
+
 export default async function HomeFeedPage() {
-  const { data: posts, error } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let preferredMoods: string[] = [];
+
+  if (user) {
+    const { data: myPosts } = await supabase
+      .from("posts")
+      .select("mood")
+      .eq("user_id", user.id);
+
+    const { data: myComments } = await supabase
+      .from("comments")
+      .select("posts(mood)")
+      .eq("user_id", user.id);
+
+    const { data: mySaved } = await supabase
+      .from("saved_posts")
+      .select("posts(mood)")
+      .eq("user_id", user.id);
+
+    const moodScores: Record<string, number> = {};
+
+    myPosts?.forEach((item: any) => {
+      if (item.mood) moodScores[item.mood] = (moodScores[item.mood] || 0) + 3;
+    });
+
+    myComments?.forEach((item: any) => {
+      const mood = item.posts?.mood;
+      if (mood) moodScores[mood] = (moodScores[mood] || 0) + 2;
+    });
+
+    mySaved?.forEach((item: any) => {
+      const mood = item.posts?.mood;
+      if (mood) moodScores[mood] = (moodScores[mood] || 0) + 3;
+    });
+
+    preferredMoods = Object.entries(moodScores)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([mood]) => mood);
+  }
+
+  const { data: rawPosts, error } = await supabase
     .from("posts")
     .select("*, profiles(username, avatar_url)")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(80);
 
   if (error) {
     console.log(error);
   }
+
+  const posts =
+    preferredMoods.length > 0 && rawPosts
+      ? sortPostsByPreferredMoods(rawPosts, preferredMoods)
+      : rawPosts || [];
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#09090B] px-6 py-8 pb-28 text-white">
@@ -72,17 +128,33 @@ export default async function HomeFeedPage() {
 
       <section className="relative z-10 mx-auto w-full max-w-2xl">
         <div className="mb-10">
-          <p className="text-sm text-violet-400">
-            Trieye Home
-          </p>
+          <p className="text-sm text-violet-400">Trieye Home</p>
 
           <h1 className="font-trieye mt-2 text-6xl italic tracking-tight text-white">
             La tua home
           </h1>
 
           <p className="mt-4 max-w-xl leading-relaxed text-zinc-500">
-            Leggi pensieri reali, ritrovati nelle parole degli altri e condividi ciò che normalmente rimarrebbe nelle note.
+            Pensieri scelti anche in base a ciò che scrivi, salvi e a cui rispondi.
           </p>
+
+          {preferredMoods.length > 0 && (
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="text-sm text-zinc-600">
+                La tua home sta seguendo:
+              </span>
+
+              {preferredMoods.map((mood) => (
+                <Link
+                  key={mood}
+                  href={`/category/${mood}`}
+                  className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300"
+                >
+                  {mood}
+                </Link>
+              ))}
+            </div>
+          )}
 
           <details className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 backdrop-blur">
             <summary className="cursor-pointer text-sm text-zinc-400">
@@ -98,9 +170,7 @@ export default async function HomeFeedPage() {
                 >
                   <span
                     className={
-                      category.slug === "popolari"
-                        ? "animate-pulse"
-                        : ""
+                      category.slug === "popolari" ? "animate-pulse" : ""
                     }
                   >
                     {category.emoji}
@@ -115,11 +185,8 @@ export default async function HomeFeedPage() {
         <div className="space-y-6">
           {posts?.map((post) => {
             const displayName = getDisplayName(post);
-
             const profileLink = getProfileLink(post);
-
-            const isPublic =
-              post.display_mode === "public";
+            const isPublic = post.display_mode === "public";
 
             return (
               <article
@@ -138,18 +205,15 @@ export default async function HomeFeedPage() {
                           : "pointer-events-none"
                       }`}
                     >
-                      {isPublic &&
-                      post.profiles?.avatar_url ? (
+                      {isPublic && post.profiles?.avatar_url ? (
                         <img
                           src={post.profiles.avatar_url}
                           alt="Avatar"
                           className="h-full w-full object-cover"
                         />
-                      ) : post.display_mode ===
-                        "alias" ? (
+                      ) : post.display_mode === "alias" ? (
                         <span>🌙</span>
-                      ) : post.display_mode ===
-                        "anonymous" ? (
+                      ) : post.display_mode === "anonymous" ? (
                         <span>👤</span>
                       ) : (
                         <span>👁️</span>
@@ -157,8 +221,7 @@ export default async function HomeFeedPage() {
                     </Link>
 
                     <div>
-                      {isPublic &&
-                      post.profiles?.username ? (
+                      {isPublic && post.profiles?.username ? (
                         <Link
                           href={profileLink || "/home"}
                           className="text-sm text-zinc-300 transition hover:text-violet-300"
@@ -194,16 +257,11 @@ export default async function HomeFeedPage() {
                 <PostReactionButtons
                   postId={post.id}
                   initialHearts={post.heart_count}
-                  initialBrokenHearts={
-                    post.broken_heart_count
-                  }
+                  initialBrokenHearts={post.broken_heart_count}
                 />
 
                 {post.mood === "obiettivi" && (
-                  <GoalProgress
-                    postId={post.id}
-                    postOwnerId={post.user_id}
-                  />
+                  <GoalProgress postId={post.id} postOwnerId={post.user_id} />
                 )}
 
                 <CommentSection postId={post.id} />

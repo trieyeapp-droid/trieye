@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import Navbar from "../../components/Navbar";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const moods = [
   { name: "overthinking", emoji: "🧠" },
@@ -28,7 +29,10 @@ export default function WritePage() {
   const [displayMode, setDisplayMode] = useState("public");
   const [aliasName, setAliasName] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [showToast, setShowToast] = useState(false);
+  const [similarCount, setSimilarCount] = useState(0);
+  const [publishedPostId, setPublishedPostId] = useState("");
 
   useEffect(() => {
     checkAuth();
@@ -54,31 +58,40 @@ export default function WritePage() {
       return;
     }
 
-    const { error } = await supabase.from("posts").insert({
-      content,
-      mood,
-      user_id: userData.user.id,
-      heart_count: 0,
-      broken_heart_count: 0,
-      display_mode: displayMode,
-      alias_name: displayMode === "alias" ? aliasName || "voce anonima" : null,
-      anonymous: displayMode === "anonymous",
-    });
+    const { data: insertedPost, error } = await supabase
+      .from("posts")
+      .insert({
+        content,
+        mood,
+        user_id: userData.user.id,
+        heart_count: 0,
+        broken_heart_count: 0,
+        display_mode: displayMode,
+        alias_name: displayMode === "alias" ? aliasName || "voce anonima" : null,
+        anonymous: displayMode === "anonymous",
+      })
+      .select()
+      .single();
 
     setLoading(false);
 
-    if (error) {
+    if (error || !insertedPost) {
       alert("Errore durante la pubblicazione.");
       return;
     }
 
+    const { count } = await supabase
+      .from("posts")
+      .select("*", { count: "exact", head: true })
+      .eq("mood", mood)
+      .neq("id", insertedPost.id);
+
+    setSimilarCount(count || 0);
+    setPublishedPostId(insertedPost.id);
+
     setContent("");
     setAliasName("");
     setShowToast(true);
-
-    setTimeout(() => {
-      setShowToast(false);
-    }, 3500);
   }
 
   return (
@@ -86,8 +99,20 @@ export default function WritePage() {
       <div className="absolute left-1/2 top-[-200px] h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-violet-600/20 blur-3xl" />
 
       {showToast && (
-        <div className="fixed right-6 top-6 z-50 rounded-2xl border border-violet-500/30 bg-zinc-950 px-5 py-4 text-sm text-zinc-200 shadow-2xl shadow-violet-950/40 backdrop-blur">
-          ✨ Pensiero pubblicato con successo 🖤
+        <div className="fixed right-6 top-6 z-50 w-[330px] rounded-2xl border border-violet-500/30 bg-zinc-950 px-5 py-4 text-sm text-zinc-200 shadow-2xl shadow-violet-950/40 backdrop-blur">
+          <p className="font-medium">✨ Pensiero pubblicato con successo</p>
+
+          {similarCount > 0 && publishedPostId && (
+            <Link
+              href={`/similar/${publishedPostId}`}
+              className="mt-3 block rounded-xl border border-violet-500/20 bg-violet-500/10 px-4 py-3 text-violet-200 transition hover:bg-violet-500/20"
+            >
+              {similarCount} persone hanno scritto pensieri simili.
+              <span className="mt-1 block text-xs text-violet-300/70">
+                Tocca per leggerli.
+              </span>
+            </Link>
+          )}
         </div>
       )}
 

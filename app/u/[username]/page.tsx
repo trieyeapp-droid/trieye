@@ -9,13 +9,12 @@ import { useParams, useRouter } from "next/navigation";
 export default function PublicUserPage() {
   const params = useParams();
   const router = useRouter();
-  const username = decodeURIComponent(
-  params.username as string
-);
+  const username = decodeURIComponent(params.username as string);
 
   const [currentUserId, setCurrentUserId] = useState("");
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
+  const [publicSavedPosts, setPublicSavedPosts] = useState<any[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -27,9 +26,7 @@ export default function PublicUserPage() {
   async function loadPublicProfile() {
     const { data: userData } = await supabase.auth.getUser();
 
-    if (userData.user) {
-      setCurrentUserId(userData.user.id);
-    }
+    if (userData.user) setCurrentUserId(userData.user.id);
 
     const { data: profileData } = await supabase
       .from("profiles")
@@ -51,6 +48,15 @@ export default function PublicUserPage() {
       .order("created_at", { ascending: false });
 
     setPosts(postsData || []);
+
+    const { data: savedData } = await supabase
+      .from("saved_posts")
+      .select("id, posts(*)")
+      .eq("user_id", profileData.id)
+      .eq("visibility", "public")
+      .order("created_at", { ascending: false });
+
+    setPublicSavedPosts(savedData || []);
 
     const { count: followers } = await supabase
       .from("follows")
@@ -83,8 +89,7 @@ export default function PublicUserPage() {
       return;
     }
 
-    if (!profile) return;
-    if (currentUserId === profile.id) return;
+    if (!profile || currentUserId === profile.id) return;
 
     if (isFollowing) {
       await supabase
@@ -119,8 +124,7 @@ export default function PublicUserPage() {
       return;
     }
 
-    if (!profile) return;
-    if (currentUserId === profile.id) return;
+    if (!profile || currentUserId === profile.id) return;
 
     const { data: existingConversation } = await supabase
       .from("conversations")
@@ -238,41 +242,52 @@ export default function PublicUserPage() {
               key={post.id}
               className="relative rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-7"
             >
-              <div className="mb-6 flex items-center gap-3">
-                <Link
-                  href={`/u/${profile.username}`}
-                  className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-violet-600/20 text-lg ring-1 ring-violet-500/20 transition hover:scale-105"
-                >
-                  {profile.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt="Avatar"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span>👁️</span>
-                  )}
-                </Link>
+              <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">
+                {post.mood}
+              </span>
 
-                <div>
-                  <Link
-                    href={`/u/${profile.username}`}
-                    className="text-sm text-zinc-300 transition hover:text-violet-300"
-                  >
-                    @{profile.username}
-                  </Link>
-
-                  <p className="text-xs text-zinc-600">
-                    {post.mood}
-                  </p>
-                </div>
-              </div>
-
-              <p className="font-trieye text-3xl leading-relaxed">
+              <p className="font-trieye mt-5 text-3xl leading-relaxed">
                 {post.content}
               </p>
             </article>
           ))}
+        </div>
+
+        <h2 className="font-trieye mt-12 text-4xl italic">
+          Pensieri salvati pubblici
+        </h2>
+
+        <div className="mt-6 space-y-5">
+          {publicSavedPosts.length === 0 && (
+            <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-7 text-zinc-500">
+              Nessun pensiero salvato pubblico.
+            </div>
+          )}
+
+          {publicSavedPosts.map((saved) => {
+            const post = saved.posts;
+            if (!post) return null;
+
+            return (
+              <Link
+                key={saved.id}
+                href={`/post/${post.id}`}
+                className="block rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-7 transition hover:border-violet-500/40"
+              >
+                <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">
+                  {post.mood}
+                </span>
+
+                <p className="font-trieye mt-5 text-3xl leading-relaxed text-zinc-100">
+                  {post.content}
+                </p>
+
+                <p className="mt-4 text-sm text-zinc-600">
+                  Salvato da @{profile.username}
+                </p>
+              </Link>
+            );
+          })}
         </div>
       </div>
 

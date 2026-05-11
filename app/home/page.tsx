@@ -1,4 +1,5 @@
 export const revalidate = 0;
+
 import Link from "next/link";
 import { supabase } from "../../lib/supabase";
 import Navbar from "../../components/Navbar";
@@ -6,6 +7,7 @@ import CommentSection from "../../components/CommentSection";
 import PostReactionButtons from "../../components/PostReactionButtons";
 import GoalProgress from "../../components/GoalProgress";
 import SavePostButton from "../../components/SavePostButton";
+import DailyMoodPicker from "../../components/DailyMoodPicker";
 
 const categories = [
   { name: "Popolari", slug: "popolari", emoji: "🔥" },
@@ -21,14 +23,6 @@ const categories = [
   { name: "Confessione", slug: "confessione", emoji: "🤐" },
   { name: "Da note", slug: "da-note", emoji: "📝" },
   { name: "Obiettivi", slug: "obiettivi", emoji: "🎯" },
-];
-
-const dailyMoodOptions = [
-  { mood: "nostalgia", emoji: "🌙", label: "nostalgico" },
-  { mood: "overthinking", emoji: "🧠", label: "overthinking" },
-  { mood: "solitudine", emoji: "🌫️", label: "vuoto" },
-  { mood: "speranza", emoji: "✨", label: "speranzoso" },
-  { mood: "rabbia", emoji: "⚡", label: "agitato" },
 ];
 
 function formatDate(date: string) {
@@ -47,37 +41,23 @@ function getDisplayName(post: any) {
     return `— ${post.alias_name || "voce anonima"}`;
   }
 
-  return post.profiles?.username
-    ? `@${post.profiles.username}`
-    : "@anonimo";
+  return post.profiles?.username ? `@${post.profiles.username}` : "@anonimo";
 }
 
 function getProfileLink(post: any) {
-  if (
-    post.display_mode === "public" &&
-    post.profiles?.username
-  ) {
+  if (post.display_mode === "public" && post.profiles?.username) {
     return `/u/${encodeURIComponent(post.profiles.username)}`;
   }
 
   return undefined;
 }
 
-function sortPostsByPreferredMoods(
-  posts: any[],
-  preferredMoods: string[]
-) {
+function sortPostsByPreferredMoods(posts: any[], preferredMoods: string[]) {
   return [...posts].sort((a, b) => {
-    const aScore = preferredMoods.includes(a.mood)
-      ? 1
-      : 0;
+    const aScore = preferredMoods.includes(a.mood) ? 1 : 0;
+    const bScore = preferredMoods.includes(b.mood) ? 1 : 0;
 
-    const bScore = preferredMoods.includes(b.mood)
-      ? 1
-      : 0;
-
-    if (aScore !== bScore)
-      return bScore - aScore;
+    if (aScore !== bScore) return bScore - aScore;
 
     return (
       new Date(b.created_at).getTime() -
@@ -113,39 +93,28 @@ export default async function HomeFeedPage() {
       .from("daily_moods")
       .select("mood")
       .eq("user_id", user.id)
-      .order("created_at", {
-        ascending: false,
-      })
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     const moodScores: Record<string, number> = {};
 
     myPosts?.forEach((item: any) => {
-      if (item.mood)
-        moodScores[item.mood] =
-          (moodScores[item.mood] || 0) + 3;
+      if (item.mood) moodScores[item.mood] = (moodScores[item.mood] || 0) + 3;
     });
 
     myComments?.forEach((item: any) => {
       const mood = item.posts?.mood;
-
-      if (mood)
-        moodScores[mood] =
-          (moodScores[mood] || 0) + 2;
+      if (mood) moodScores[mood] = (moodScores[mood] || 0) + 2;
     });
 
     mySaved?.forEach((item: any) => {
       const mood = item.posts?.mood;
-
-      if (mood)
-        moodScores[mood] =
-          (moodScores[mood] || 0) + 3;
+      if (mood) moodScores[mood] = (moodScores[mood] || 0) + 3;
     });
 
     if (todayMood?.mood) {
-      moodScores[todayMood.mood] =
-        (moodScores[todayMood.mood] || 0) + 5;
+      moodScores[todayMood.mood] = (moodScores[todayMood.mood] || 0) + 5;
     }
 
     preferredMoods = Object.entries(moodScores)
@@ -162,10 +131,7 @@ export default async function HomeFeedPage() {
 
   const posts =
     preferredMoods.length > 0 && rawPosts
-      ? sortPostsByPreferredMoods(
-          rawPosts,
-          preferredMoods
-        )
+      ? sortPostsByPreferredMoods(rawPosts, preferredMoods)
       : rawPosts || [];
 
   return (
@@ -181,53 +147,18 @@ export default async function HomeFeedPage() {
 
       <section className="relative z-10 mx-auto w-full max-w-2xl">
         <div className="mb-10">
-          <p className="text-sm text-violet-400">
-            Trieye Home
-          </p>
+          <p className="text-sm text-violet-400">Trieye Home</p>
 
           <h1 className="font-trieye mt-2 text-6xl italic tracking-tight text-white">
             La tua home
           </h1>
 
           <p className="mt-4 max-w-xl leading-relaxed text-zinc-500">
-            Pensieri scelti anche in base a ciò che scrivi, salvi e a cui rispondi.
+            Pensieri scelti anche in base a ciò che scrivi, salvi e a cui
+            rispondi.
           </p>
 
-          <div className="mt-8 rounded-[2rem] border border-zinc-800 bg-zinc-950/70 p-5 backdrop-blur">
-            <p className="text-sm text-zinc-500">
-              Come ti senti oggi?
-            </p>
-
-            <div className="mt-4 flex flex-wrap gap-3">
-              {dailyMoodOptions.map((item) => (
-                <form
-                  key={item.mood}
-                  action={async () => {
-                    "use server";
-
-                    const {
-                      data: { user },
-                    } = await supabase.auth.getUser();
-
-                    if (!user) return;
-
-                    await supabase
-                      .from("daily_moods")
-                      .insert({
-                        user_id: user.id,
-                        mood: item.mood,
-                      });
-                  }}
-                >
-                  <button
-                    className="rounded-full border border-zinc-800 bg-black/40 px-4 py-2 text-sm text-zinc-400 transition hover:border-violet-500/30 hover:text-violet-300"
-                  >
-                    {item.emoji} {item.label}
-                  </button>
-                </form>
-              ))}
-            </div>
-          </div>
+          <DailyMoodPicker />
 
           {preferredMoods.length > 0 && (
             <div className="mt-5 flex flex-wrap gap-2">
@@ -261,9 +192,7 @@ export default async function HomeFeedPage() {
                 >
                   <span
                     className={
-                      category.slug === "popolari"
-                        ? "animate-pulse"
-                        : ""
+                      category.slug === "popolari" ? "animate-pulse" : ""
                     }
                   >
                     {category.emoji}
@@ -277,14 +206,9 @@ export default async function HomeFeedPage() {
 
         <div className="space-y-6">
           {posts.map((post) => {
-            const displayName =
-              getDisplayName(post);
-
-            const profileLink =
-              getProfileLink(post);
-
-            const isPublic =
-              post.display_mode === "public";
+            const displayName = getDisplayName(post);
+            const profileLink = getProfileLink(post);
+            const isPublic = post.display_mode === "public";
 
             return (
               <article
@@ -303,20 +227,15 @@ export default async function HomeFeedPage() {
                           : "pointer-events-none"
                       }`}
                     >
-                      {isPublic &&
-                      post.profiles?.avatar_url ? (
+                      {isPublic && post.profiles?.avatar_url ? (
                         <img
-                          src={
-                            post.profiles.avatar_url
-                          }
+                          src={post.profiles.avatar_url}
                           alt="Avatar"
                           className="h-full w-full object-cover"
                         />
-                      ) : post.display_mode ===
-                        "alias" ? (
+                      ) : post.display_mode === "alias" ? (
                         <span>🌙</span>
-                      ) : post.display_mode ===
-                        "anonymous" ? (
+                      ) : post.display_mode === "anonymous" ? (
                         <span>👤</span>
                       ) : (
                         <span>👁️</span>
@@ -324,8 +243,7 @@ export default async function HomeFeedPage() {
                     </Link>
 
                     <div>
-                      {isPublic &&
-                      post.profiles?.username ? (
+                      {isPublic && post.profiles?.username ? (
                         <Link
                           href={profileLink || "/home"}
                           className="text-sm text-zinc-300 transition hover:text-violet-300"
@@ -333,15 +251,11 @@ export default async function HomeFeedPage() {
                           {displayName}
                         </Link>
                       ) : (
-                        <p className="text-sm text-zinc-300">
-                          {displayName}
-                        </p>
+                        <p className="text-sm text-zinc-300">{displayName}</p>
                       )}
 
                       <p className="text-xs text-zinc-600">
-                        {formatDate(
-                          post.created_at
-                        )}
+                        {formatDate(post.created_at)}
                       </p>
                     </div>
                   </div>
@@ -363,21 +277,14 @@ export default async function HomeFeedPage() {
                 <PostReactionButtons
                   postId={post.id}
                   initialHearts={post.heart_count}
-                  initialBrokenHearts={
-                    post.broken_heart_count
-                  }
+                  initialBrokenHearts={post.broken_heart_count}
                 />
 
                 {post.mood === "obiettivi" && (
-                  <GoalProgress
-                    postId={post.id}
-                    postOwnerId={post.user_id}
-                  />
+                  <GoalProgress postId={post.id} postOwnerId={post.user_id} />
                 )}
 
-                <CommentSection
-                  postId={post.id}
-                />
+                <CommentSection postId={post.id} />
               </article>
             );
           })}

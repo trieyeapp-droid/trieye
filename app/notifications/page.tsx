@@ -52,6 +52,14 @@ export default function NotificationsPage() {
     return "/notifications";
   }
 
+  function getProfileLink(notification: any) {
+    if (notification.profiles?.username) {
+      return `/u/${encodeURIComponent(notification.profiles.username)}`;
+    }
+
+    return "/notifications";
+  }
+
   return (
     <main className="min-h-screen bg-[#09090B] px-6 py-8 pb-28 text-white">
       <div className="mx-auto max-w-2xl">
@@ -72,43 +80,63 @@ export default function NotificationsPage() {
             </div>
           )}
 
-          {notifications.map((notification) => (
-            <Link
-              key={notification.id}
-              href={getNotificationLink(notification)}
-              className={`block rounded-[2rem] border p-5 transition hover:border-violet-500/40 ${
-                notification.read
-                  ? "border-zinc-800 bg-zinc-950/70"
-                  : "border-violet-500/30 bg-violet-500/10"
-              }`}
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-violet-600/20">
-                  {notification.profiles?.avatar_url ? (
-                    <img
-                      src={notification.profiles.avatar_url}
-                      alt="Avatar"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span>👁️</span>
-                  )}
-                </div>
+          {notifications.map((notification) => {
+            const notificationLink = getNotificationLink(notification);
+            const profileLink = getProfileLink(notification);
 
-                <div>
-                  <p className="text-zinc-200">
-                    {notification.profiles?.username
-                      ? `@${notification.profiles.username} ${notification.message}`
-                      : notification.message}
-                  </p>
+            return (
+              <div
+                key={notification.id}
+                onClick={() => router.push(notificationLink)}
+                className={`cursor-pointer rounded-[2rem] border p-5 transition hover:border-violet-500/40 ${
+                  notification.read
+                    ? "border-zinc-800 bg-zinc-950/70"
+                    : "border-violet-500/30 bg-violet-500/10"
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <Link
+                    href={profileLink}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-violet-600/20 transition hover:scale-105"
+                  >
+                    {notification.profiles?.avatar_url ? (
+                      <img
+                        src={notification.profiles.avatar_url}
+                        alt="Avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span>👁️</span>
+                    )}
+                  </Link>
 
-                  <p className="mt-1 text-sm text-zinc-600">
-                    Apri
-                  </p>
+                  <div>
+                    <p className="text-zinc-200">
+                      {notification.profiles?.username ? (
+                        <>
+                          <Link
+                            href={profileLink}
+                            onClick={(e) => e.stopPropagation()}
+                            className="transition hover:text-violet-300"
+                          >
+                            @{notification.profiles.username}
+                          </Link>{" "}
+                          {notification.message}
+                        </>
+                      ) : (
+                        notification.message
+                      )}
+                    </p>
+
+                    <p className="mt-1 text-sm text-zinc-600">
+                      Apri
+                    </p>
+                  </div>
                 </div>
               </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       </div>
 
